@@ -1,0 +1,41 @@
+services:
+  uch-mongo:
+    image: mongo:6
+    container_name: uch-mongo
+    ports:
+      - "27017:27017"
+    command: ["--bind_ip_all"]
+    restart: unless-stopped
+
+  uch-orion-ld:
+    image: fiware/orion-ld:1.11.0
+    container_name: uch-orion-ld
+    depends_on:
+      - uch-mongo
+    ports:
+      - "1026:1026"
+    command: [
+      "-dbhost", "uch-mongo",
+      "-logLevel", "DEBUG",
+      "-mongocOnly"
+    ]
+    restart: unless-stopped
+
+  uch-api:
+    build:
+      context: ../apps/api
+    container_name: uch-api
+    depends_on:
+      - uch-orion-ld
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - ORION_BASE_URL=http://uch-orion-ld:1026
+      - ROADWORK_CONTEXT_URL=http://uch-api:3000/contexts/roadwork.jsonld
+    volumes:
+      - ../apps/api:/app
+      - ../domains:/domains
+      - /app/node_modules
+    command: npm run dev
+    restart: unless-stopped

@@ -1,0 +1,14 @@
+{
+  "@context": [
+    "https://uri.etsi.org/ngsi-ld/v1/ngsi-ld-core-context.jsonld",
+    {
+      "RoadWork": "https://example.com/ns/roadwork/RoadWork",
+      "title": "https://schema.org/name",
+      "description": "https://schema.org/description",
+      "status": "https://example.com/ns/roadwork/status",
+      "startDate": "https://schema.org/startDate",
+      "endDate": "https://schema.org/endDate",
+      "location": "https://uri.etsi.org/ngsi-ld/location"
+    }
+  ]
+}
