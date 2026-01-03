@@ -23,7 +23,8 @@ services:
 
   uch-api:
     build:
-      context: ../apps/api
+      context: ..
+      dockerfile: Dockerfile.api
     container_name: uch-api
     depends_on:
       - uch-orion-ld
@@ -34,8 +35,10 @@ services:
       - ORION_BASE_URL=http://uch-orion-ld:1026
       - ROADWORK_CONTEXT_URL=http://uch-api:3000/contexts/roadwork.jsonld
     volumes:
-      - ../apps/api:/app
+      - ..:/repo
+      - /repo/node_modules
+      - /repo/apps/api/node_modules
+      - /repo/packages/ngsi-client/node_modules
       - ../domains:/domains
-      - /app/node_modules
     command: npm run dev
     restart: unless-stopped

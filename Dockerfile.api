@@ -1,0 +1,16 @@
+FROM node:20-alpine
+WORKDIR /repo
+
+COPY package*.json ./
+COPY apps/api/package*.json ./apps/api/
+COPY packages/ngsi-client/package*.json ./packages/ngsi-client/
+
+# 安装 workspace 依赖
+RUN npm install
+
+# 复制源代码
+COPY . .
+
+WORKDIR /repo/apps/api
+EXPOSE 3000
+CMD ["npm","run","dev"]

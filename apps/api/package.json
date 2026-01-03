@@ -1,5 +1,5 @@
 {
-  "name": "api",
+  "name": "@uch/api",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -12,6 +12,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@uch/ngsi-client": "file:../../packages/ngsi-client",
     "express": "^5.2.1"
   },
   "devDependencies": {

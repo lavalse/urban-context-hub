@@ -1,0 +1,8 @@
+{
+  "name": "urban-context-hub",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}
