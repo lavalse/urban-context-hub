@@ -55,4 +55,27 @@ export class NgsiClient {
     if (!res.ok) throw new Error(`queryEntities failed: ${res.status} ${await res.text()}`);
     return res.json();
   }
+
+    async patchEntity(entityId: string, partialAttrs: Record<string, any>): Promise<void> {
+    // ✅ PATCH 也是“写入类请求”：不使用 Link，内联 @context
+    const payload = {
+      "@context": [this.opt.contextUrl],
+      ...partialAttrs,
+    };
+
+    const res = await fetch(
+      `${this.opt.brokerUrl}/ngsi-ld/v1/entities/${encodeURIComponent(entityId)}/attrs`,
+      {
+        method: "PATCH",
+        headers: this.headersForWrite(),
+        body: JSON.stringify(payload),
+      },
+    );
+
+    // NGSI-LD PATCH attrs 成功通常是 204 No Content
+    if (res.status === 204) return;
+
+    throw new Error(`patchEntity failed: ${res.status} ${await res.text()}`);
+  }
+
 }

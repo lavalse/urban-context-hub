@@ -79,3 +79,105 @@ app.post("/api/roadworks", async (req, res) => {
   }
 });
 
+app.get("/api/roadworks", async (req, res) => {
+  try {
+    const status = req.query.status as string | undefined;
+
+    const params: Record<string, string> = {
+      type: "RoadWork",
+    };
+
+    // 可选过滤：status
+    if (status) {
+      const allowed = new Set(["planned", "ongoing", "finished"]);
+      if (!allowed.has(status)) {
+        return res.status(400).json({
+          error: "Invalid status. Expected one of: planned | ongoing | finished",
+        });
+      }
+      params.q = `status=="${status}"`;
+    }
+
+    const data = await ngsi.queryEntities(params);
+    return res.status(200).json(data);
+  } catch (e: any) {
+    return res.status(500).json({ error: e?.message ?? String(e) });
+  }
+});
+
+app.patch("/api/roadworks/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, description, status, startDate, endDate, location } = req.body ?? {};
+
+    const partialAttrs: Record<string, any> = {};
+
+    if (title !== undefined) {
+      partialAttrs.title = { type: "Property", value: title };
+    }
+    if (description !== undefined) {
+      partialAttrs.description = { type: "Property", value: description };
+    }
+    if (status !== undefined) {
+      const allowed = new Set(["planned", "ongoing", "finished"]);
+      if (!allowed.has(status)) {
+        return res.status(400).json({
+          error: "Invalid status. Expected one of: planned | ongoing | finished",
+        });
+      }
+      partialAttrs.status = { type: "Property", value: status };
+    }
+    if (startDate !== undefined) {
+      partialAttrs.startDate = { type: "Property", value: startDate };
+    }
+    if (endDate !== undefined) {
+      partialAttrs.endDate = { type: "Property", value: endDate };
+    }
+    if (location !== undefined) {
+      if (
+        location?.type !== "Point" ||
+        !Array.isArray(location?.coordinates) ||
+        location.coordinates.length !== 2
+      ) {
+        return res.status(400).json({
+          error: "Invalid location. Expected GeoJSON Point: {type:'Point', coordinates:[lng,lat]}",
+        });
+      }
+      partialAttrs.location = { type: "GeoProperty", value: location };
+    }
+
+    if (Object.keys(partialAttrs).length === 0) {
+      return res.status(400).json({ error: "No updatable fields provided." });
+    }
+
+    await ngsi.patchEntity(id, partialAttrs);
+    return res.status(204).send();
+  } catch (e: any) {
+    return res.status(500).json({ error: e?.message ?? String(e) });
+  }
+});
+
+app.post("/api/roadworks/:id/finish", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { endDate } = req.body ?? {};
+
+    const finalEndDate = endDate ?? new Date().toISOString();
+
+    const partialAttrs: Record<string, any> = {
+      status: { type: "Property", value: "finished" },
+      endDate: { type: "Property", value: finalEndDate },
+    };
+
+    await ngsi.patchEntity(id, partialAttrs);
+
+    return res.status(200).json({
+      id,
+      status: "finished",
+      endDate: finalEndDate,
+    });
+  } catch (e: any) {
+    return res.status(500).json({ error: e?.message ?? String(e) });
+  }
+});
+
