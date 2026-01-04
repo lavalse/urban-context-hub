@@ -32,11 +32,6 @@ app.get("/contexts/roadwork.jsonld", (_req, res) => {
   res.sendFile(contextPath);
 });
 
-
-app.listen(port, "0.0.0.0", () => {
-  console.log(`API listening on http://0.0.0.0:${port}`);
-});
-
 app.post("/api/roadworks", async (req, res) => {
   try {
     const input = req.body as RoadWorkCreateInput;
@@ -91,6 +86,24 @@ app.get("/api/roadworks", async (req, res) => {
   }
 });
 
+app.get("/api/roadworks/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const data = await ngsi.getEntity(id);
+
+    if (data?.type !== "RoadWork") {
+      return res.status(404).json({ error: "NotFound", message: "RoadWork not found" });
+    }
+
+    return res.status(200).json(data);
+  } catch (e: any) {
+    if (e instanceof DomainValidationError) {
+      return res.status(400).json({ error: e.message });
+    }
+    return res.status(500).json({ error: e?.message ?? String(e) });
+  }
+});
+
 app.patch("/api/roadworks/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -112,7 +125,6 @@ app.patch("/api/roadworks/:id", async (req, res) => {
   }
 });
 
-
 app.post("/api/roadworks/:id/finish", async (req, res) => {
   try {
     const { id } = req.params;
@@ -133,5 +145,9 @@ app.post("/api/roadworks/:id/finish", async (req, res) => {
     }
     return res.status(500).json({ error: e?.message ?? String(e) });
   }
+});
+
+app.listen(port, "0.0.0.0", () => {
+  console.log(`API listening on http://0.0.0.0:${port}`);
 });
 

@@ -56,8 +56,8 @@ export class NgsiClient {
     return res.json();
   }
 
-    async patchEntity(entityId: string, partialAttrs: Record<string, any>): Promise<void> {
-    // ✅ PATCH 也是“写入类请求”：不使用 Link，内联 @context
+  async patchEntity(entityId: string, partialAttrs: Record<string, any>): Promise<void> {
+  // ✅ PATCH 也是“写入类请求”：不使用 Link，内联 @context
     const payload = {
       "@context": [this.opt.contextUrl],
       ...partialAttrs,
@@ -77,5 +77,19 @@ export class NgsiClient {
 
     throw new Error(`patchEntity failed: ${res.status} ${await res.text()}`);
   }
+
+  async getEntity(entityId: string): Promise<any> {
+    const res = await fetch(
+      `${this.opt.brokerUrl}/ngsi-ld/v1/entities/${encodeURIComponent(entityId)}`,
+      {
+        method: "GET",
+        headers: this.headersForGet(),
+      },
+    );
+
+    if (!res.ok) throw new Error(`getEntity failed: ${res.status} ${await res.text()}`);
+    return res.json();
+  }
+
 
 }
