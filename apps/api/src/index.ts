@@ -2,6 +2,10 @@ import express from "express";
 import path from "path";
 import { NgsiClient } from "@uch/ngsi-client";
 import crypto from "crypto";
+import { buildRoadWorkEntity, buildRoadWorkAttrsPatch, buildRoadWorkFinishPatch } from "../../../domains/roadwork/ngsi";
+import type { RoadWorkCreateInput, RoadWorkPatchInput } from "../../../domains/roadwork/model";
+import { DomainValidationError } from "../../../domains/roadwork/errors";
+
 
 const app = express();
 const port = process.env.PORT ? Number(process.env.PORT) : 3000;
@@ -33,51 +37,30 @@ app.listen(port, "0.0.0.0", () => {
   console.log(`API listening on http://0.0.0.0:${port}`);
 });
 
-
 app.post("/api/roadworks", async (req, res) => {
   try {
-    const { id, title, description, status, startDate, endDate, location } = req.body ?? {};
+    const input = req.body as RoadWorkCreateInput;
 
-    // 最小校验：先保证跑通
-    if (!title || !status || !startDate || !endDate || !location) {
+    // 最小必填校验（仍然保留在 API 层，避免 domains 收到空对象）
+    if (!input?.title || !input?.status || !input?.startDate || !input?.endDate || !input?.location) {
       return res.status(400).json({
         error: "Missing required fields: title, status, startDate, endDate, location",
       });
     }
 
-    // 约定：location 必须是 GeoJSON Point
-    // { "type": "Point", "coordinates": [lng, lat] }
-    if (
-      location?.type !== "Point" ||
-      !Array.isArray(location?.coordinates) ||
-      location.coordinates.length !== 2
-    ) {
-      return res.status(400).json({
-        error: "Invalid location. Expected GeoJSON Point: {type:'Point', coordinates:[lng,lat]}",
-      });
-    }
-
-    const entity: any = {
-      id: id ?? `urn:ngsi-ld:RoadWork:${crypto.randomUUID()}`,
-      type: "RoadWork",
-      title: { type: "Property", value: title },
-      status: { type: "Property", value: status },
-      startDate: { type: "Property", value: startDate },
-      endDate: { type: "Property", value: endDate },
-      location: { type: "GeoProperty", value: location },
-    };
-
-    if (description) {
-      entity.description = { type: "Property", value: description };
-    }
+    const entity = buildRoadWorkEntity(input);
 
     await ngsi.createEntity(entity);
 
     return res.status(201).json({ id: entity.id });
   } catch (e: any) {
+    if (e instanceof DomainValidationError) {
+      return res.status(400).json({ error: e.message });
+    }
     return res.status(500).json({ error: e?.message ?? String(e) });
   }
 });
+
 
 app.get("/api/roadworks", async (req, res) => {
   try {
@@ -101,6 +84,9 @@ app.get("/api/roadworks", async (req, res) => {
     const data = await ngsi.queryEntities(params);
     return res.status(200).json(data);
   } catch (e: any) {
+    if (e instanceof DomainValidationError) {
+      return res.status(400).json({ error: e.message });
+    }
     return res.status(500).json({ error: e?.message ?? String(e) });
   }
 });
@@ -108,75 +94,43 @@ app.get("/api/roadworks", async (req, res) => {
 app.patch("/api/roadworks/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, status, startDate, endDate, location } = req.body ?? {};
+    const patch = req.body as RoadWorkPatchInput;
 
-    const partialAttrs: Record<string, any> = {};
+    const attrs = buildRoadWorkAttrsPatch(patch);
 
-    if (title !== undefined) {
-      partialAttrs.title = { type: "Property", value: title };
-    }
-    if (description !== undefined) {
-      partialAttrs.description = { type: "Property", value: description };
-    }
-    if (status !== undefined) {
-      const allowed = new Set(["planned", "ongoing", "finished"]);
-      if (!allowed.has(status)) {
-        return res.status(400).json({
-          error: "Invalid status. Expected one of: planned | ongoing | finished",
-        });
-      }
-      partialAttrs.status = { type: "Property", value: status };
-    }
-    if (startDate !== undefined) {
-      partialAttrs.startDate = { type: "Property", value: startDate };
-    }
-    if (endDate !== undefined) {
-      partialAttrs.endDate = { type: "Property", value: endDate };
-    }
-    if (location !== undefined) {
-      if (
-        location?.type !== "Point" ||
-        !Array.isArray(location?.coordinates) ||
-        location.coordinates.length !== 2
-      ) {
-        return res.status(400).json({
-          error: "Invalid location. Expected GeoJSON Point: {type:'Point', coordinates:[lng,lat]}",
-        });
-      }
-      partialAttrs.location = { type: "GeoProperty", value: location };
-    }
-
-    if (Object.keys(partialAttrs).length === 0) {
+    if (Object.keys(attrs).length === 0) {
       return res.status(400).json({ error: "No updatable fields provided." });
     }
 
-    await ngsi.patchEntity(id, partialAttrs);
+    await ngsi.patchEntity(id, attrs);
     return res.status(204).send();
   } catch (e: any) {
+    if (e instanceof DomainValidationError) {
+      return res.status(400).json({ error: e.message });
+    }
     return res.status(500).json({ error: e?.message ?? String(e) });
   }
 });
+
 
 app.post("/api/roadworks/:id/finish", async (req, res) => {
   try {
     const { id } = req.params;
     const { endDate } = req.body ?? {};
 
-    const finalEndDate = endDate ?? new Date().toISOString();
+    const attrs = buildRoadWorkFinishPatch(endDate);
 
-    const partialAttrs: Record<string, any> = {
-      status: { type: "Property", value: "finished" },
-      endDate: { type: "Property", value: finalEndDate },
-    };
-
-    await ngsi.patchEntity(id, partialAttrs);
+    await ngsi.patchEntity(id, attrs);
 
     return res.status(200).json({
       id,
       status: "finished",
-      endDate: finalEndDate,
+      endDate: attrs.endDate.value,
     });
   } catch (e: any) {
+    if (e instanceof DomainValidationError) {
+      return res.status(400).json({ error: e.message });
+    }
     return res.status(500).json({ error: e?.message ?? String(e) });
   }
 });
