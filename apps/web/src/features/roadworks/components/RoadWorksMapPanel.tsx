@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useRef } from "react";
-import maplibregl, { type GeoJSONSource, type Map as MLMap } from "maplibre-gl";
+import maplibregl, {
+  type GeoJSONSource,
+  type Map as MLMap,
+  type StyleSpecification,
+} from "maplibre-gl";
 import type { RoadWorkDTO } from "../types";
 
 type Props = {
@@ -10,7 +14,7 @@ type Props = {
   onHover?: (id: string | null) => void;
 };
 
-const DEFAULT_STYLE = {
+const DEFAULT_STYLE: StyleSpecification = {
   version: 8,
   sources: {
     osm: {
@@ -27,7 +31,7 @@ const DEFAULT_STYLE = {
       source: "osm",
     },
   ],
-} as const;
+};
 
 const SOURCE_ID = "roadworks";
 const LAYER_POINTS = "roadworks-points";
