@@ -1,4 +1,6 @@
 import { Link, useSearchParams } from "react-router-dom";
+import { listRoadWorks } from "../api/roadworks.api";
+
 
 export function RoadWorksPage() {
   const [sp, setSp] = useSearchParams();
@@ -23,6 +25,17 @@ export function RoadWorksPage() {
 
         <Link to="/roadworks/new">+ New</Link>
       </div>
+
+      <button
+        onClick={async () => {
+            const data = await listRoadWorks({ status: status as any });
+            console.log("roadworks:", data);
+            alert(`loaded ${data.length} items. check console.`);
+        }}
+        >
+        Test load (console)
+      </button>
+
 
       <p style={{ marginTop: 16 }}>List goes here (status = {status})</p>
     </div>

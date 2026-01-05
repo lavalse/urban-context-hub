@@ -5,7 +5,7 @@ import crypto from "crypto";
 import { buildRoadWorkEntity, buildRoadWorkAttrsPatch, buildRoadWorkFinishPatch } from "../../../domains/roadwork/ngsi";
 import type { RoadWorkCreateInput, RoadWorkPatchInput } from "../../../domains/roadwork/model";
 import { DomainValidationError } from "../../../domains/roadwork/errors";
-
+import { toRoadWorkView } from "./mappers/roadwork.mapper";
 
 const app = express();
 const port = process.env.PORT ? Number(process.env.PORT) : 3000;
@@ -46,8 +46,8 @@ app.post("/api/roadworks", async (req, res) => {
     const entity = buildRoadWorkEntity(input);
 
     await ngsi.createEntity(entity);
-
-    return res.status(201).json({ id: entity.id });
+    const created = await ngsi.getEntity(entity.id);
+    return res.status(201).json(toRoadWorkView(created));
   } catch (e: any) {
     if (e instanceof DomainValidationError) {
       return res.status(400).json({ error: e.message });
@@ -77,7 +77,9 @@ app.get("/api/roadworks", async (req, res) => {
     }
 
     const data = await ngsi.queryEntities(params);
-    return res.status(200).json(data);
+    const list = Array.isArray(data) ? data : [];
+    const views = list.map(toRoadWorkView);
+    return res.status(200).json(views);
   } catch (e: any) {
     if (e instanceof DomainValidationError) {
       return res.status(400).json({ error: e.message });
@@ -95,7 +97,7 @@ app.get("/api/roadworks/:id", async (req, res) => {
       return res.status(404).json({ error: "NotFound", message: "RoadWork not found" });
     }
 
-    return res.status(200).json(data);
+    return res.status(200).json(toRoadWorkView(data));
   } catch (e: any) {
     if (e instanceof DomainValidationError) {
       return res.status(400).json({ error: e.message });
@@ -127,7 +129,7 @@ app.patch("/api/roadworks/:id", async (req, res) => {
     }
 
     // 4. 返回完整实体
-    return res.status(200).json(updated);
+    return res.status(200).json(toRoadWorkView(updated));
   } catch (e: any) {
     if (e instanceof DomainValidationError) {
       return res.status(400).json({ error: e.message });
@@ -156,7 +158,7 @@ app.post("/api/roadworks/:id/finish", async (req, res) => {
     }
 
     // 4. 返回完整实体
-    return res.status(200).json(updated);
+    return res.status(200).json(toRoadWorkView(updated));
   } catch (e: any) {
     if (e instanceof DomainValidationError) {
       return res.status(400).json({ error: e.message });
