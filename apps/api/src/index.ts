@@ -115,8 +115,19 @@ app.patch("/api/roadworks/:id", async (req, res) => {
       return res.status(400).json({ error: "No updatable fields provided." });
     }
 
+    // 1. 执行 PATCH
     await ngsi.patchEntity(id, attrs);
-    return res.status(204).send();
+
+    // 2. 立即读取更新后的完整实体
+    const updated = await ngsi.getEntity(id);
+
+    // 3. 类型守门（可选但推荐）
+    if (updated?.type !== "RoadWork") {
+      return res.status(404).json({ error: "NotFound", message: "RoadWork not found" });
+    }
+
+    // 4. 返回完整实体
+    return res.status(200).json(updated);
   } catch (e: any) {
     if (e instanceof DomainValidationError) {
       return res.status(400).json({ error: e.message });
@@ -124,6 +135,7 @@ app.patch("/api/roadworks/:id", async (req, res) => {
     return res.status(500).json({ error: e?.message ?? String(e) });
   }
 });
+
 
 app.post("/api/roadworks/:id/finish", async (req, res) => {
   try {
@@ -132,13 +144,19 @@ app.post("/api/roadworks/:id/finish", async (req, res) => {
 
     const attrs = buildRoadWorkFinishPatch(endDate);
 
+    // 1. 执行领域动作（PATCH）
     await ngsi.patchEntity(id, attrs);
 
-    return res.status(200).json({
-      id,
-      status: "finished",
-      endDate: attrs.endDate.value,
-    });
+    // 2. 读取更新后的完整实体
+    const updated = await ngsi.getEntity(id);
+
+    // 3. 类型守门（推荐）
+    if (updated?.type !== "RoadWork") {
+      return res.status(404).json({ error: "NotFound", message: "RoadWork not found" });
+    }
+
+    // 4. 返回完整实体
+    return res.status(200).json(updated);
   } catch (e: any) {
     if (e instanceof DomainValidationError) {
       return res.status(400).json({ error: e.message });
@@ -146,6 +164,7 @@ app.post("/api/roadworks/:id/finish", async (req, res) => {
     return res.status(500).json({ error: e?.message ?? String(e) });
   }
 });
+
 
 app.listen(port, "0.0.0.0", () => {
   console.log(`API listening on http://0.0.0.0:${port}`);
