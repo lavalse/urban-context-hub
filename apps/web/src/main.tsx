@@ -5,6 +5,8 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { RouterProvider } from "react-router-dom";
 import { router } from "./app/routes";
 
+import "maplibre-gl/dist/maplibre-gl.css";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

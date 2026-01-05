@@ -5,22 +5,39 @@ import { useRoadWorks } from "../hooks/useRoadWorks";
 import { RoadWorkList } from "../components/RoadWorkList";
 import { RoadWorksMapPanel } from "../components/RoadWorksMapPanel";
 
+const isRoadWorkStatus = (v: string | null): v is RoadWorkStatus =>
+  v === "planned" || v === "ongoing" || v === "finished";
+
 export function RoadWorksPage() {
   const [sp, setSp] = useSearchParams();
 
-  const status = (sp.get("status") ?? "ongoing") as RoadWorkStatus;
-  const selectedId = sp.get("selected");
+  const statusParam = sp.get("status");
+  const status: RoadWorkStatus = isRoadWorkStatus(statusParam) ? statusParam : "ongoing";
 
+  const selectedId = sp.get("selected");
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   const q = useRoadWorks({ status });
   const items = q.data ?? [];
 
-  const setSelected = (id: string | null) => {
+  const updateSp = (fn: (next: URLSearchParams) => void) => {
     const next = new URLSearchParams(sp);
-    if (id) next.set("selected", id);
-    else next.delete("selected");
+    fn(next);
     setSp(next, { replace: true });
+  };
+
+  const setSelected = (id: string | null) => {
+    updateSp((next) => {
+      if (id) next.set("selected", id);
+      else next.delete("selected");
+    });
+  };
+
+  const setStatus = (s: RoadWorkStatus) => {
+    updateSp((next) => {
+      next.set("status", s);
+      next.delete("selected"); // 切换 filter 时清掉选中，避免选中项不在当前列表
+    });
   };
 
   return (
@@ -30,15 +47,7 @@ export function RoadWorksPage() {
       <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
         <label>
           Status:{" "}
-          <select
-            value={status}
-            onChange={(e) => {
-              const next = new URLSearchParams(sp);
-              next.set("status", e.target.value);
-              next.delete("selected"); // 切换 filter 时清掉选中项（避免选中不在列表里）
-              setSp(next, { replace: true });
-            }}
-          >
+          <select value={status} onChange={(e) => setStatus(e.target.value as RoadWorkStatus)}>
             <option value="planned">planned</option>
             <option value="ongoing">ongoing</option>
             <option value="finished">finished</option>
@@ -56,15 +65,9 @@ export function RoadWorksPage() {
           gridTemplateColumns: "420px 1fr",
         }}
       >
-        {/* Left: list */}
         <div style={{ paddingRight: 12, overflow: "auto" }}>
           {q.isLoading && <p>Loading...</p>}
-
-          {q.error && (
-            <p>
-              Error: {(q.error as any).message ?? "Unknown error"}
-            </p>
-          )}
+          {q.error && <p>Error: {(q.error as any).message ?? "Unknown error"}</p>}
 
           {!q.isLoading && !q.error && (
             <RoadWorkList
@@ -76,7 +79,6 @@ export function RoadWorksPage() {
           )}
         </div>
 
-        {/* Right: map placeholder */}
         <div style={{ overflow: "hidden" }}>
           <RoadWorksMapPanel
             items={items}
