@@ -2,6 +2,7 @@ import { Link, useParams } from "react-router-dom";
 import { useRoadWork } from "../hooks/useRoadWork";
 import { usePatchRoadWork } from "../hooks/usePatchRoadWork";
 import { useFinishRoadWork } from "../hooks/useFinishRoadWork";
+import { RoadWorkForm } from "../components/RoadWorkForm";
 
 export function RoadWorkDetailPage() {
   const { id: rawId } = useParams();
@@ -10,10 +11,6 @@ export function RoadWorkDetailPage() {
   const q = useRoadWork(id);
   const patch = usePatchRoadWork(id);
   const finish = useFinishRoadWork(id);
-
-  // Local form state (minimal)
-  const title = q.data?.title ?? "";
-  const description = q.data?.description ?? "";
 
   // We'll use uncontrolled inputs via defaultValue + key to keep MVP simple
   // (later we can upgrade to proper form state management)
@@ -53,63 +50,21 @@ export function RoadWorkDetailPage() {
           <section style={{ marginTop: 16 }}>
             <h2 style={{ marginBottom: 8 }}>Edit (PATCH)</h2>
 
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const form = e.currentTarget;
-                const formData = new FormData(form);
+            <RoadWorkForm
+              mode="edit"
+              initial={q.data}
+              submitting={patch.isPending}
+              onSubmit={(payload) => patch.mutate(payload)}
+              submitLabel="Save"
+            />
 
-                const nextTitle = String(formData.get("title") ?? "").trim();
-                const nextDescriptionRaw = String(formData.get("description") ?? "").trim();
-
-                const patchPayload: any = {};
-                if (nextTitle && nextTitle !== q.data.title) patchPayload.title = nextTitle;
-
-                // Allow clearing description by sending empty string? (your backend may treat optional)
-                // MVP: only set when changed, including empty => clears if API supports
-                if (nextDescriptionRaw !== (q.data.description ?? "")) {
-                  patchPayload.description = nextDescriptionRaw || undefined;
-                }
-
-                if (Object.keys(patchPayload).length === 0) {
-                  alert("No changes");
-                  return;
-                }
-
-                patch.mutate(patchPayload);
-              }}
-            >
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, maxWidth: 520 }}>
-                <label>
-                  Title
-                  <input
-                    name="title"
-                    defaultValue={title}
-                    style={{ display: "block", width: "100%" }}
-                    key={`title-${q.data.id}-${q.data.title}`}
-                  />
-                </label>
-
-                <label>
-                  Description
-                  <textarea
-                    name="description"
-                    defaultValue={description}
-                    style={{ display: "block", width: "100%", minHeight: 80 }}
-                    key={`desc-${q.data.id}-${q.data.description ?? ""}`}
-                  />
-                </label>
-
-                <button type="submit" disabled={patch.isPending}>
-                  {patch.isPending ? "Saving..." : "Save"}
-                </button>
-
-                {patch.error && (
-                  <p>Error: {(patch.error as any).message ?? "Patch failed"}</p>
-                )}
-              </div>
-            </form>
+            {patch.error && (
+              <p style={{ marginTop: 12 }}>
+                Error: {(patch.error as any).message ?? "Patch failed"}
+              </p>
+            )}
           </section>
+
 
           <section style={{ marginTop: 16 }}>
             <h2 style={{ marginBottom: 8 }}>Domain Action</h2>
